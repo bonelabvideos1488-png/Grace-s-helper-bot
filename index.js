@@ -98,6 +98,12 @@ function isAllowed(user) {
     return user.username.toLowerCase() === ALLOWED_USERNAME.toLowerCase();
 }
 
+// ---------- ПОЛУЧЕНИЕ ИМЕНИ ПОЛЬЗОВАТЕЛЯ ДЛЯ УПОМИНАНИЯ ----------
+function getUserMention(user) {
+    if (!user) return 'неизвестный пользователь';
+    return user.username ? `@${user.username}` : user.first_name;
+}
+
 // ============================================================
 // 3. АВТОУДАЛЕНИЕ СООБЩЕНИЙ У ЗАМУЧЕННЫХ
 // ============================================================
@@ -113,7 +119,71 @@ bot.on('message', (msg) => {
 });
 
 // ============================================================
-// 4. КОМАНДЫ ТОЛЬКО ДЛЯ РАЗРЕШЁННОГО
+// 4. АВТОШТРАФ ЗА "КРОКУС" (НЕ ДЛЯ РАЗРЕШЁННОГО)
+// ============================================================
+
+bot.on('message', (msg) => {
+    if (!msg.text || msg.from.is_bot) return;
+    
+    // Если это разрешённый пользователь — пропускаем
+    if (isAllowed(msg.from)) return;
+
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+
+    // Приводим к нижнему регистру для упрощения
+    const text = msg.text.toLowerCase();
+
+    // Регулярное выражение для поиска "крокус" в любом виде
+    const krokusRegex = /[кkк][рpр][оo0о][кkк][уyу][сcс]/i;
+
+    // Проверяем, есть ли совпадение
+    if (krokusRegex.test(text)) {
+        const currentRep = getRep(chatId, userId);
+        const newRep = currentRep - 500;
+        setRep(chatId, userId, newRep);
+        
+        const username = getUserMention(msg.from);
+        bot.sendMessage(chatId, `🌺 ${username}, ты сказал "крокус"! -500 репутации. Теперь: ${newRep}`);
+    }
+});
+
+// ============================================================
+// 5. "ГРАЦЕ КТО ..." — СЛУЧАЙНЫЙ ПОЛЬЗОВАТЕЛЬ
+// ============================================================
+
+bot.onText(/^Граце кто (.+)$/i, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const question = match[1]; // то, что после "Граце кто"
+
+    try {
+        // Получаем список участников чата (админы + бот)
+        const admins = await bot.getChatAdministrators(chatId);
+        const users = [];
+        for (const admin of admins) {
+            if (!admin.user.is_bot) {
+                users.push(admin.user);
+            }
+        }
+        
+        // Если админов мало — добавляем бота
+        if (users.length < 2) {
+            users.push(bot.me);
+        }
+
+        // Выбираем случайного пользователя
+        const randomUser = users[Math.floor(Math.random() * users.length)];
+        const username = getUserMention(randomUser);
+
+        bot.sendMessage(chatId, `${username} ${question}`);
+    } catch (e) {
+        // Если не удалось получить список — отвечаем с ботом
+        bot.sendMessage(chatId, `@${bot.me.username} ${question}`);
+    }
+});
+
+// ============================================================
+// 6. КОМАНДЫ ТОЛЬКО ДЛЯ РАЗРЕШЁННОГО
 // ============================================================
 
 // ---------- /унизить (по ответу) ----------
@@ -135,7 +205,8 @@ bot.onText(/\/унизить$/, (msg) => {
     }
     const newVal = getRep(chatId, target.id) - 100;
     setRep(chatId, target.id, newVal);
-    bot.sendMessage(chatId, `💀 ${target.first_name} унижен! -100 репы. Теперь: ${newVal}`);
+    const targetMention = getUserMention(target);
+    bot.sendMessage(chatId, `💀 ${targetMention} унижен! -100 репы. Теперь: ${newVal}`);
 });
 
 // ---------- /осеменение (по ответу) ----------
@@ -157,7 +228,8 @@ bot.onText(/\/осеменение$/, (msg) => {
     }
     const newVal = getRep(chatId, target.id) + 100;
     setRep(chatId, target.id, newVal);
-    bot.sendMessage(chatId, `🌱 ${target.first_name} осеменён! +100 репы. Теперь: ${newVal}`);
+    const targetMention = getUserMention(target);
+    bot.sendMessage(chatId, `🌱 ${targetMention} осеменён! +100 репы. Теперь: ${newVal}`);
 });
 
 // ---------- /larpmoment (по ответу) ----------
@@ -179,7 +251,8 @@ bot.onText(/\/larpmoment$/, (msg) => {
     }
     const newVal = getLarp(chatId, target.id) + 1;
     setLarp(chatId, target.id, newVal);
-    bot.sendMessage(chatId, `🎭 ${target.first_name} получил larp-момент! +1. Теперь: ${newVal}`);
+    const targetMention = getUserMention(target);
+    bot.sendMessage(chatId, `🎭 ${targetMention} получил larp-момент! +1. Теперь: ${newVal}`);
 });
 
 // ---------- /мут (по ответу ИЛИ по username) ----------
@@ -271,7 +344,8 @@ bot.onText(/\/мут(?:\s+@(\w+))?\s+(\d+)([мчс])?$/, async (msg, match) => {
         });
     } catch (e) {}
 
-    bot.sendMessage(chatId, `🔇 ${targetUser.first_name} замучен на ${duration}${unit}.`);
+    const targetMention = getUserMention(targetUser);
+    bot.sendMessage(chatId, `🔇 ${targetMention} замучен на ${duration}${unit}.`);
 });
 
 // ---------- /размут (по ответу ИЛИ по username) ----------
@@ -337,7 +411,8 @@ bot.onText(/\/размут(?:\s+@(\w+))?$/, async (msg, match) => {
         });
     } catch (e) {}
 
-    bot.sendMessage(chatId, `✅ ${targetUser.first_name} размучен.`);
+    const targetMention = getUserMention(targetUser);
+    bot.sendMessage(chatId, `✅ ${targetMention} размучен.`);
 });
 
 // ---------- /бан (по ответу ИЛИ по username) ----------
@@ -401,26 +476,40 @@ bot.onText(/\/бан(?:\s+@(\w+))?$/, async (msg, match) => {
 
     try {
         await bot.banChatMember(chatId, targetUser.id);
-        bot.sendMessage(chatId, `🔨 ${targetUser.first_name} забанен.`);
+        const targetMention = getUserMention(targetUser);
+        bot.sendMessage(chatId, `🔨 ${targetMention} забанен.`);
     } catch (e) {
         bot.sendMessage(chatId, '❌ Не удалось забанить. У бота должны быть права администратора.');
     }
 });
 
 // ============================================================
-// 5. КОМАНДЫ ДЛЯ ВСЕХ (ПРОСМОТР)
+// 7. КОМАНДЫ ДЛЯ ВСЕХ (ПРОСМОТР)
 // ============================================================
 
-// ---------- /репа (с larp-моментами) ----------
+// ---------- /репа (универсальная: своя ИЛИ по ответу) ----------
 bot.onText(/\/репа$/, (msg) => {
     const chatId = msg.chat.id;
-    const userId = msg.from.id;
+    let userId = msg.from.id;
+
+    // Если ответили на сообщение — показываем репу того, кому ответили
+    if (msg.reply_to_message) {
+        const target = msg.reply_to_message.from;
+        userId = target.id;
+    }
+
     const rep = getRep(chatId, userId);
     const larp = getLarp(chatId, userId);
-    bot.sendMessage(chatId, `📊 Твоя репа: ${rep} | 🎭 Larp-моменты: ${larp}`);
+    
+    if (msg.reply_to_message) {
+        const mention = getUserMention(msg.reply_to_message.from);
+        bot.sendMessage(chatId, `📊 Репа ${mention}: ${rep} | 🎭 Larp-моменты: ${larp}`);
+    } else {
+        bot.sendMessage(chatId, `📊 Твоя репа: ${rep} | 🎭 Larp-моменты: ${larp}`);
+    }
 });
 
-// ---------- /репа_пользователя (с larp-моментами) ----------
+// ---------- /репа_пользователя (только по ответу) ----------
 bot.onText(/\/репа_пользователя$/, (msg) => {
     const chatId = msg.chat.id;
     if (!msg.reply_to_message) {
@@ -429,7 +518,8 @@ bot.onText(/\/репа_пользователя$/, (msg) => {
     const target = msg.reply_to_message.from;
     const rep = getRep(chatId, target.id);
     const larp = getLarp(chatId, target.id);
-    bot.sendMessage(chatId, `📊 Репа ${target.first_name}: ${rep} | 🎭 Larp-моменты: ${larp}`);
+    const mention = getUserMention(target);
+    bot.sendMessage(chatId, `📊 Репа ${mention}: ${rep} | 🎭 Larp-моменты: ${larp}`);
 });
 
 // ---------- /топ ----------
@@ -451,14 +541,27 @@ bot.onText(/\/топ$/, (msg) => {
     bot.sendMessage(chatId, message);
 });
 
-// ---------- /larp ----------
+// ---------- /larp (универсальная: свои ИЛИ по ответу) ----------
 bot.onText(/\/larp$/, (msg) => {
     const chatId = msg.chat.id;
-    const larp = getLarp(chatId, msg.from.id);
-    bot.sendMessage(chatId, `🎭 Твои larp-моменты: ${larp}`);
+    let userId = msg.from.id;
+
+    if (msg.reply_to_message) {
+        const target = msg.reply_to_message.from;
+        userId = target.id;
+    }
+
+    const larp = getLarp(chatId, userId);
+    
+    if (msg.reply_to_message) {
+        const mention = getUserMention(msg.reply_to_message.from);
+        bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
+    } else {
+        bot.sendMessage(chatId, `🎭 Твои larp-моменты: ${larp}`);
+    }
 });
 
-// ---------- /larp_пользователя ----------
+// ---------- /larp_пользователя (только по ответу) ----------
 bot.onText(/\/larp_пользователя$/, (msg) => {
     const chatId = msg.chat.id;
     if (!msg.reply_to_message) {
@@ -466,7 +569,8 @@ bot.onText(/\/larp_пользователя$/, (msg) => {
     }
     const target = msg.reply_to_message.from;
     const larp = getLarp(chatId, target.id);
-    bot.sendMessage(chatId, `🎭 Larp-моменты ${target.first_name}: ${larp}`);
+    const mention = getUserMention(target);
+    bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
 });
 
 // ---------- /топ_larp ----------
@@ -489,7 +593,7 @@ bot.onText(/\/топ_larp$/, (msg) => {
 });
 
 // ============================================================
-// 6. ПРИВЕТСТВИЕ НОВЫХ УЧАСТНИКОВ
+// 8. ПРИВЕТСТВИЕ НОВЫХ УЧАСТНИКОВ
 // ============================================================
 
 bot.on('new_chat_members', (msg) => {
@@ -501,11 +605,11 @@ bot.on('new_chat_members', (msg) => {
         return bot.sendMessage(chatId,
             `👋 Бот для репы, ларпов, мутов и банов.\n\n` +
             `🔹 Для всех:\n` +
-            `/репа — своя репа + larp-моменты\n` +
-            `/репа_пользователя — репа другого + larp-моменты (по ответу)\n` +
+            `/репа — без ответа: своя репа + larp; с ответом: репа + larp того, кому ответил\n` +
+            `/репа_пользователя — репа другого + larp (только по ответу)\n` +
             `/топ — топ репы\n` +
-            `/larp — свои larp-моменты\n` +
-            `/larp_пользователя — larp другого (по ответу)\n` +
+            `/larp — без ответа: свои larp; с ответом: larp того, кому ответил\n` +
+            `/larp_пользователя — larp другого (только по ответу)\n` +
             `/топ_larp — топ larp\n\n` +
             `🔸 Только для @${ALLOWED_USERNAME}:\n` +
             `/унизить — -100 репы (по ответу)\n` +
@@ -518,9 +622,7 @@ bot.on('new_chat_members', (msg) => {
     }
 
     // Приветствие нового пользователя
-    const username = newMember.username 
-        ? `@${newMember.username}` 
-        : newMember.first_name;
+    const username = getUserMention(newMember);
 
     bot.sendMessage(
         chatId,
