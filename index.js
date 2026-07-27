@@ -135,19 +135,16 @@ bot.on('message', (msg) => {
 });
 
 // ============================================================
-// 5. АВТОШТРАФ ЗА "КРОКУС" (ВСЕ ЯЗЫКИ + ДИАКРИТИКА + РИМСКИЕ ЦИФРЫ)
+// 5. АВТОШТРАФ ЗА "КРОКУС" (ВСЕ ВАРИАНТЫ)
 // ============================================================
 
 bot.on('message', (msg) => {
     if (!msg.text || msg.from.is_bot) return;
-    
-    // Если это разрешённый пользователь — пропускаем
     if (isAllowed(msg.from)) return;
 
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
-    // Приводим к нижнему регистру для упрощения
     let text = msg.text.toLowerCase();
 
     // ============================================================
@@ -157,23 +154,22 @@ bot.on('message', (msg) => {
     const normalizedText = text
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        // Римские цифры и похожие символы
-        .replace(/[ⅽⅭ]/g, 'c')
-        .replace(/[ⅿⅯ]/g, 'm')
-        .replace(/[ⅾⅮ]/g, 'd')
-        .replace(/[ⅼⅬ]/g, 'l')
-        .replace(/[ⅹⅩ]/g, 'x')
-        .replace(/[ⅳⅣ]/g, 'v')
-        .replace(/[ⅰⅠ]/g, 'i')
+        // Римские цифры и похожие символы (ВСЕ)
+        .replace(/[ⅽⅭᴄ]/g, 'c')
+        .replace(/[ⅿⅯᴍ]/g, 'm')
+        .replace(/[ⅾⅮᴅ]/g, 'd')
+        .replace(/[ⅼⅬʟ]/g, 'l')
+        .replace(/[ⅹⅩxх]/g, 'x')
+        .replace(/[ⅳⅣᴠ]/g, 'v')
+        .replace(/[ⅰⅠɪ]/g, 'i')
         .replace(/[ⅱⅡ]/g, 'ii')
         .replace(/[ⅲⅢ]/g, 'iii')
         .replace(/[ⅵⅥ]/g, 'vi')
         .replace(/[ⅶⅦ]/g, 'vii')
         .replace(/[ⅷⅧ]/g, 'viii')
         // Другие похожие символы
-        .replace(/[ᴄ]/g, 'c')
-        .replace(/[ʀ]/g, 'r')
-        .replace(/[ᴏ]/g, 'o')
+        .replace(/[ʀᴙ]/g, 'r')
+        .replace(/[ᴏᴼ]/g, 'o')
         .replace(/[ᴋ]/g, 'k')
         .replace(/[ʏ]/g, 'y')
         .replace(/[ꜱ]/g, 's')
@@ -205,104 +201,121 @@ bot.on('message', (msg) => {
         .replace(/[χ]/g, 'ch')
         .replace(/[ψ]/g, 'ps');
 
-    // Удаляем все знаки препинания, пробелы и спецсимволы для проверки
+    // Удаляем все знаки препинания, пробелы и спецсимволы
     const cleanText = normalizedText
         .replace(/[.,!?;:()"'\s\-_+=\[\]{}|\\\/<>@#$%^&*~`№§©®™€£¥¢¤°±×÷¬¦¨¯´¸¿¡«»‹›‘’“”•·…—–−]/g, '')
-        .replace(/[😀-🙏]/g, '') // удаляем эмодзи
-        .replace(/[🌀-🗿]/g, '') // удаляем эмодзи
-        .replace(/[❤️🔥💀🎭🌺⭐✨]/g, ''); // удаляем популярные эмодзи
+        .replace(/[😀-🙏]/g, '')
+        .replace(/[🌀-🗿]/g, '')
+        .replace(/[❤️🔥💀🎭🌺⭐✨]/g, '');
 
     // ============================================================
-    // РАСШИРЕННОЕ РЕГУЛЯРНОЕ ВЫРАЖЕНИЕ ДЛЯ "КРОКУС"
+    // ПОИСК "КРОКУС" ВО ВСЕХ ВАРИАНТАХ
     // ============================================================
 
-    // 1. Основные варианты (русский, английский, транслит, цифры, греческий)
-    const krokusRegex = new RegExp(
+    // 1. Точное совпадение (все языки)
+    const exactKrokusRegex = new RegExp(
         '(?:' +
-        // Русский: крокус
         '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[уyуυ]{1}[сcсς]{1}' +
         '|' +
-        // Английский: crocus
         '[cсcς]{1}[рpрρ]{1}[оo0оο]{1}[cсcς]{1}[уyуυ]{1}[sсς]{1}' +
         '|' +
-        // Транслит: krokus
         '[kкkκ]{1}[рpрρ]{1}[оo0оο]{1}[kкkκ]{1}[уyуυ]{1}[sсς]{1}' +
         '|' +
-        // Греческий: κρόκος
         '[κkк]{1}[ρpр]{1}[οo0о]{1}[κkк]{1}[οo0о]{1}[ςсc]{1}' +
         '|' +
-        // Смешанный: cрокус, kрокус, крокуc
         '[cсckкkκ]{1}[рpрρ]{1}[оo0оο]{1}[cсckкkκ]{1}[уyуυ]{1}[sсcς]{1}' +
         ')',
         'i'
     );
 
-    // 2. Азиатские языки
+    // 2. Перестановки букв
+    const permutationsRegex = new RegExp(
+        '(?:' +
+        // кросук (к-р-о-с-у-к)
+        '[кkкκ]{1}[рpрρ]{1}[оo0оο]{1}[сcсς]{1}[уyуυ]{1}[кkкκ]{1}' +
+        '|' +
+        // корукс (к-о-р-у-к-с)
+        '[кkкκ]{1}[оo0оο]{1}[рpрρ]{1}[уyуυ]{1}[кkкκ]{1}[сcсς]{1}' +
+        '|' +
+        // курокс (к-у-р-о-к-с)
+        '[кkкκ]{1}[уyуυ]{1}[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}[сcсς]{1}' +
+        '|' +
+        // сукрок (с-у-к-р-о-к)
+        '[сcсς]{1}[уyуυ]{1}[кkкκ]{1}[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}' +
+        '|' +
+        // укрокс (у-к-р-о-к-с)
+        '[уyуυ]{1}[кkкκ]{1}[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}[сcсς]{1}' +
+        '|' +
+        // рокуск (р-о-к-у-с-к)
+        '[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}[уyуυ]{1}[сcсς]{1}[кkкκ]{1}' +
+        '|' +
+        // курос (к-у-р-о-с) — 5 букв
+        '[кkкκ]{1}[уyуυ]{1}[рpрρ]{1}[оo0оο]{1}[сcсς]{1}' +
+        '|' +
+        // сорук (с-о-р-у-к)
+        '[сcсς]{1}[оo0оο]{1}[рpрρ]{1}[уyуυ]{1}[кkкκ]{1}' +
+        '|' +
+        // рукос (р-у-к-о-с)
+        '[рpрρ]{1}[уyуυ]{1}[кkкκ]{1}[оo0оο]{1}[сcсς]{1}' +
+        ')',
+        'i'
+    );
+
+    // 3. Обрывки (крок, кроку, крокс, крокус)
+    const fragmentsRegex = new RegExp(
+        '(?:' +
+        // крок (4 буквы)
+        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}' +
+        '|' +
+        // кроку (5 букв)
+        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[уyуυ]{1}' +
+        '|' +
+        // крокс (5 букв, с на конце вместо у)
+        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[сcсς]{1}' +
+        '|' +
+        // крокус (6 букв, но с заменой)
+        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[уyуυ]{1}[сcсς]{1}' +
+        '|' +
+        // крокус (с латинской c)
+        '[cсcς]{1}[рpрρ]{1}[оo0оο]{1}[cсcς]{1}[уyуυ]{1}[sсς]{1}' +
+        '|' +
+        // крокус (с латинской k)
+        '[kкkκ]{1}[рpрρ]{1}[оo0оο]{1}[kкkκ]{1}[уyуυ]{1}[sсς]{1}' +
+        ')',
+        'i'
+    );
+
+    // 4. Азиатские языки
     const asianRegex = new RegExp(
         '(?:' +
-        // Китайский упрощённый: 番红花
-        '番红花' +
-        '|' +
-        // Китайский традиционный: 番紅花
-        '番紅花' +
-        '|' +
-        // Японский (кандзи): 番紅花
-        '番紅花' +
-        '|' +
-        // Японский (катакана): クロッカス
-        'クロッカス' +
-        '|' +
-        // Японский (хирагана): くろっかす
-        'くろっかす' +
-        '|' +
-        // Корейский: 크로커스
-        '크로커스' +
-        '|' +
-        // Хинди: क्रोकस
-        'क्रोकस' +
-        '|' +
-        // Бенгальский: ক্রোকাস
-        'ক্রোকাস' +
-        '|' +
-        // Тайский: โครคัส
-        'โครคัส' +
-        '|' +
-        // Иврит: קרוקוס
-        'קרוקוס' +
-        '|' +
-        // Персидский: کروکوس
-        'کروکوس' +
+        '番红花|番紅花|クロッカス|くろっかす|크로커스|क्रोकस|ক্রোকাস|โครคัส|קרוקוס|کروکوس' +
         ')',
         'i'
     );
 
-    // 3. Африканские языки
+    // 5. Африканские языки
     const africanRegex = new RegExp(
         '(?:' +
-        // Арабский: كروكوس
-        'كروكوس' +
-        '|' +
-        // Амхарский: ክሮከስ
-        'ክሮከስ' +
+        'كروكوس|ክሮከስ' +
         ')',
         'i'
     );
 
-    // 4. Проверка "перед классными" (многоязычная)
+    // 6. Проверка "перед классными"
     const beforeClassRegex = /крокус\s*классн[ыо]й?|крокус\s*классн[ыо]е|крокус\s*классн[ыо]|crocus\s*class|κρόκος\s*class|krokus\s*class|crocus\s*classic|krokus\s*klassisch|krokus\s*klasse|krokus\s*klass/i;
 
     // Проверяем, есть ли совпадение
     const found = 
-        krokusRegex.test(cleanText) ||
+        exactKrokusRegex.test(cleanText) ||
+        permutationsRegex.test(cleanText) ||
+        fragmentsRegex.test(cleanText) ||
         asianRegex.test(text) ||
         africanRegex.test(text) ||
         beforeClassRegex.test(cleanText) ||
-        // Проверка на "крокус" с любыми символами между буквами (включая цифры и смайлы)
+        // Проверка на "крокус" с любыми символами между буквами
         /[кkкκcс]\W*[рpрρ]\W*[оo0оο]\W*[кkкκcс]\W*[уyуυ]\W*[сcсς]/i.test(cleanText) ||
         /[cсcς]\W*[рpрρ]\W*[оo0оο]\W*[cсcς]\W*[уyуυ]\W*[sсς]/i.test(cleanText) ||
-        /[κkк]\W*[ρpр]\W*[οo0о]\W*[κkк]\W*[οo0о]\W*[ςсc]/i.test(cleanText) ||
-        // Проверка на "крокус" на любом языке с любыми символами
-        /[кkкκcс]\W*[рpрρ]\W*[оo0оο]\W*[кkкκcс]\W*[уyуυ]\W*[сcсς]/i.test(cleanText);
+        /[κkк]\W*[ρpр]\W*[οo0о]\W*[κkк]\W*[οo0о]\W*[ςсc]/i.test(cleanText);
 
     if (found) {
         const currentRep = getRep(chatId, userId);
@@ -320,10 +333,9 @@ bot.on('message', (msg) => {
 
 bot.onText(/^Граце кто (.+)$/i, async (msg, match) => {
     const chatId = msg.chat.id;
-    const question = match[1]; // то, что после "Граце кто"
+    const question = match[1];
 
     try {
-        // Получаем список участников чата (админы + бот)
         const admins = await bot.getChatAdministrators(chatId);
         const users = [];
         for (const admin of admins) {
@@ -331,19 +343,14 @@ bot.onText(/^Граце кто (.+)$/i, async (msg, match) => {
                 users.push(admin.user);
             }
         }
-        
-        // Если админов мало — добавляем бота
         if (users.length < 2) {
             users.push(bot.me);
         }
 
-        // Выбираем случайного пользователя
         const randomUser = users[Math.floor(Math.random() * users.length)];
         const username = getUserMention(randomUser);
-
         bot.sendMessage(chatId, `${username} ${question}`);
     } catch (e) {
-        // Если не удалось получить список — отвечаем с ботом
         bot.sendMessage(chatId, `@${bot.me.username} ${question}`);
     }
 });
@@ -432,7 +439,6 @@ bot.onText(/\/мут(?:\s+@(\w+))?\s+(\d+)([мчс])?$/, async (msg, match) => {
 
     let targetUser = null;
 
-    // СПОСОБ 1: Если указан username
     const targetUsername = match[1];
     if (targetUsername) {
         try {
@@ -451,7 +457,6 @@ bot.onText(/\/мут(?:\s+@(\w+))?\s+(\d+)([мчс])?$/, async (msg, match) => {
         }
     }
 
-    // СПОСОБ 2: Если ответили на сообщение
     if (!targetUser && msg.reply_to_message) {
         targetUser = msg.reply_to_message.from;
     }
@@ -473,7 +478,6 @@ bot.onText(/\/мут(?:\s+@(\w+))?\s+(\d+)([мчс])?$/, async (msg, match) => {
         return bot.sendMessage(chatId, '❌ Нельзя замутить бота.');
     }
 
-    // Проверяем время
     const duration = parseInt(match[2]);
     const unit = match[3] || 'м';
 
@@ -481,7 +485,6 @@ bot.onText(/\/мут(?:\s+@(\w+))?\s+(\d+)([мчс])?$/, async (msg, match) => {
         return bot.sendMessage(chatId, '❌ Укажи время: `/мут 10м` (м — минуты, ч — часы, с — секунды)', { parse_mode: 'Markdown' });
     }
 
-    // Проверяем, не админ ли цель
     try {
         const member = await bot.getChatMember(chatId, targetUser.id);
         if (member.status === 'creator' || member.status === 'administrator') {
@@ -525,7 +528,6 @@ bot.onText(/\/размут(?:\s+@(\w+))?$/, async (msg, match) => {
 
     let targetUser = null;
 
-    // СПОСОБ 1: Если указан username
     const targetUsername = match[1];
     if (targetUsername) {
         try {
@@ -544,7 +546,6 @@ bot.onText(/\/размут(?:\s+@(\w+))?$/, async (msg, match) => {
         }
     }
 
-    // СПОСОБ 2: Если ответили на сообщение
     if (!targetUser && msg.reply_to_message) {
         targetUser = msg.reply_to_message.from;
     }
@@ -592,7 +593,6 @@ bot.onText(/\/бан(?:\s+@(\w+))?$/, async (msg, match) => {
 
     let targetUser = null;
 
-    // СПОСОБ 1: Если указан username
     const targetUsername = match[1];
     if (targetUsername) {
         try {
@@ -611,7 +611,6 @@ bot.onText(/\/бан(?:\s+@(\w+))?$/, async (msg, match) => {
         }
     }
 
-    // СПОСОБ 2: Если ответили на сообщение
     if (!targetUser && msg.reply_to_message) {
         targetUser = msg.reply_to_message.from;
     }
@@ -658,7 +657,6 @@ bot.onText(/\/репа$/, (msg) => {
     const chatId = msg.chat.id;
     let userId = msg.from.id;
 
-    // Если ответили на сообщение — показываем репу того, кому ответили
     if (msg.reply_to_message) {
         const target = msg.reply_to_message.from;
         userId = target.id;
@@ -702,41 +700,4 @@ bot.onText(/\/топ$/, (msg) => {
     users.sort((a, b) => b.rep - a.rep);
     const top = users.slice(0, 10);
     if (!top.length) return bot.sendMessage(chatId, '📭 Нет данных.');
-    let message = '🏆 ТОП-10 репы:\n\n';
-    top.forEach((u, i) => { message += `${i+1}. ID: ${u.id} — ${u.rep} реп\n`; });
-    bot.sendMessage(chatId, message);
-});
-
-// ---------- /larp (универсальная: свои ИЛИ по ответу) ----------
-bot.onText(/\/larp$/, (msg) => {
-    const chatId = msg.chat.id;
-    let userId = msg.from.id;
-
-    if (msg.reply_to_message) {
-        const target = msg.reply_to_message.from;
-        userId = target.id;
-    }
-
-    const larp = getLarp(chatId, userId);
-    
-    if (msg.reply_to_message) {
-        const mention = getUserMention(msg.reply_to_message.from);
-        bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
-    } else {
-        bot.sendMessage(chatId, `🎭 Твои larp-моменты: ${larp}`);
-    }
-});
-
-// ---------- /larp_пользователя (только по ответу) ----------
-bot.onText(/\/larp_пользователя$/, (msg) => {
-    const chatId = msg.chat.id;
-    if (!msg.reply_to_message) {
-        return bot.sendMessage(chatId, '❌ Ответь на сообщение пользователя.');
-    }
-    const target = msg.reply_to_message.from;
-    const larp = getLarp(chatId, target.id);
-    const mention = getUserMention(target);
-    bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
-});
-
-// ---------
+    let message = '🏆 ТОП-10 репы:\
