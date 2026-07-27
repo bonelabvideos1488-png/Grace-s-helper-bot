@@ -16,61 +16,50 @@ if (!TOKEN) {
 }
 
 const bot = new TelegramBot(TOKEN, { polling: true });
-
-// Если подключишь Persistent Disk на Render — укажи путь к нему
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 
-// Файлы для хранения
-const REP_FILE     = path.join(DATA_DIR, 'rep.json');
-const LARP_FILE    = path.join(DATA_DIR, 'larp.json');
-const MUTE_FILE    = path.join(DATA_DIR, 'mute.json');
+const REP_FILE = path.join(DATA_DIR, 'rep.json');
+const LARP_FILE = path.join(DATA_DIR, 'larp.json');
+const MUTE_FILE = path.join(DATA_DIR, 'mute.json');
 
 // ============================================================
 // 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================================
 
 function loadJSON(file) {
-    try {
-        const content = fs.readFileSync(file);
-        return JSON.parse(content);
-    } catch {
-        return {};
-    }
+    try { return JSON.parse(fs.readFileSync(file)); } 
+    catch { return {}; }
 }
 
 function saveJSON(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-// ---------- РЕПУТАЦИЯ ----------
 function getRep(chatId, userId) {
     const data = loadJSON(REP_FILE);
     return data[`${chatId}_${userId}`] || 0;
 }
+
 function setRep(chatId, userId, value) {
     const data = loadJSON(REP_FILE);
     data[`${chatId}_${userId}`] = value;
     saveJSON(REP_FILE, data);
 }
 
-// ---------- LARP-МОМЕНТЫ ----------
 function getLarp(chatId, userId) {
     const data = loadJSON(LARP_FILE);
     return data[`${chatId}_${userId}`] || 0;
 }
+
 function setLarp(chatId, userId, value) {
     const data = loadJSON(LARP_FILE);
     data[`${chatId}_${userId}`] = value;
     saveJSON(LARP_FILE, data);
 }
 
-// ---------- МУТЫ ----------
-function loadMutes() {
-    return loadJSON(MUTE_FILE);
-}
-function saveMutes(data) {
-    saveJSON(MUTE_FILE, data);
-}
+function loadMutes() { return loadJSON(MUTE_FILE); }
+function saveMutes(data) { saveJSON(MUTE_FILE, data); }
+
 function isMuted(chatId, userId) {
     const data = loadMutes();
     const key = `${chatId}_${userId}`;
@@ -82,24 +71,24 @@ function isMuted(chatId, userId) {
     }
     return true;
 }
+
 function setMute(chatId, userId, durationMs) {
     const data = loadMutes();
     data[`${chatId}_${userId}`] = Date.now() + durationMs;
     saveMutes(data);
 }
+
 function removeMute(chatId, userId) {
     const data = loadMutes();
     delete data[`${chatId}_${userId}`];
     saveMutes(data);
 }
 
-// ---------- ПРОВЕРКА ПРАВ ----------
 function isAllowed(user) {
     if (!user || !user.username) return false;
     return user.username.toLowerCase() === ALLOWED_USERNAME.toLowerCase();
 }
 
-// ---------- ПОЛУЧЕНИЕ ИМЕНИ ПОЛЬЗОВАТЕЛЯ ДЛЯ УПОМИНАНИЯ ----------
 function getUserMention(user) {
     if (!user) return 'неизвестный пользователь';
     return user.username ? `@${user.username}` : user.first_name;
@@ -135,7 +124,7 @@ bot.on('message', (msg) => {
 });
 
 // ============================================================
-// 5. АВТОШТРАФ ЗА "КРОКУС" (АБСОЛЮТНО ВСЕ ВАРИАНТЫ)
+// 5. АВТОШТРАФ ЗА "КРОКУС" (ГАРАНТИРОВАННО ЛОВИТ ВСЁ)
 // ============================================================
 
 bot.on('message', (msg) => {
@@ -148,13 +137,99 @@ bot.on('message', (msg) => {
     let text = msg.text.toLowerCase();
 
     // ============================================================
-    // МАКСИМАЛЬНАЯ НОРМАЛИЗАЦИЯ ТЕКСТА
+    // ПОЛНАЯ НОРМАЛИЗАЦИЯ (ВСЕ СИМВОЛЫ → РУССКИЕ БУКВЫ)
     // ============================================================
 
     const normalizedText = text
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        // Африканские цифры → латинские цифры
+        // Латиница → русские
+        .replace(/[a]/g, 'а')
+        .replace(/[b]/g, 'б')
+        .replace(/[c]/g, 'с')
+        .replace(/[d]/g, 'д')
+        .replace(/[e]/g, 'е')
+        .replace(/[f]/g, 'ф')
+        .replace(/[g]/g, 'г')
+        .replace(/[h]/g, 'н')
+        .replace(/[i]/g, 'и')
+        .replace(/[j]/g, 'й')
+        .replace(/[k]/g, 'к')
+        .replace(/[l]/g, 'л')
+        .replace(/[m]/g, 'м')
+        .replace(/[n]/g, 'н')
+        .replace(/[o]/g, 'о')
+        .replace(/[p]/g, 'р')
+        .replace(/[q]/g, 'к')
+        .replace(/[r]/g, 'р')
+        .replace(/[s]/g, 'с')
+        .replace(/[t]/g, 'т')
+        .replace(/[u]/g, 'у')
+        .replace(/[v]/g, 'в')
+        .replace(/[w]/g, 'в')
+        .replace(/[x]/g, 'х')
+        .replace(/[y]/g, 'у')
+        .replace(/[z]/g, 'з')
+        // Греческие → русские
+        .replace(/[αβ]/g, 'а')
+        .replace(/[γ]/g, 'г')
+        .replace(/[δ]/g, 'д')
+        .replace(/[ε]/g, 'е')
+        .replace(/[ζ]/g, 'з')
+        .replace(/[η]/g, 'н')
+        .replace(/[θ]/g, 'т')
+        .replace(/[ικ]/g, 'к')
+        .replace(/[λ]/g, 'л')
+        .replace(/[μ]/g, 'м')
+        .replace(/[ν]/g, 'н')
+        .replace(/[ξ]/g, 'х')
+        .replace(/[ο]/g, 'о')
+        .replace(/[π]/g, 'п')
+        .replace(/[ρ]/g, 'р')
+        .replace(/[σς]/g, 'с')
+        .replace(/[τ]/g, 'т')
+        .replace(/[υ]/g, 'у')
+        .replace(/[φ]/g, 'ф')
+        .replace(/[χ]/g, 'х')
+        .replace(/[ψ]/g, 'п')
+        .replace(/[ω]/g, 'о')
+        // Коптские → русские
+        .replace(/[ⲁⲁ]/g, 'а')
+        .replace(/[ⲃ]/g, 'б')
+        .replace(/[ⲅ]/g, 'г')
+        .replace(/[ⲇ]/g, 'д')
+        .replace(/[ⲉ]/g, 'е')
+        .replace(/[ⲍ]/g, 'з')
+        .replace(/[ⲏ]/g, 'н')
+        .replace(/[ⲑ]/g, 'т')
+        .replace(/[ⲓ]/g, 'и')
+        .replace(/[ⲕ]/g, 'к')
+        .replace(/[ⲗ]/g, 'л')
+        .replace(/[ⲙ]/g, 'м')
+        .replace(/[ⲛ]/g, 'н')
+        .replace(/[ⲟ]/g, 'о')
+        .replace(/[ⲡ]/g, 'п')
+        .replace(/[ⲣ]/g, 'р')
+        .replace(/[ⲥ]/g, 'с')
+        .replace(/[ⲧ]/g, 'т')
+        .replace(/[ⲩ]/g, 'у')
+        .replace(/[ⲫ]/g, 'ф')
+        .replace(/[ⲭ]/g, 'х')
+        .replace(/[ⲱ]/g, 'о')
+        // Римские цифры → русские
+        .replace(/[ⅽⅭᴄ]/g, 'с')
+        .replace(/[ⅿⅯᴍ]/g, 'м')
+        .replace(/[ⅾⅮᴅ]/g, 'д')
+        .replace(/[ⅼⅬʟ]/g, 'л')
+        .replace(/[ⅹⅩxх]/g, 'х')
+        .replace(/[ⅳⅣᴠ]/g, 'в')
+        .replace(/[ⅰⅠɪ]/g, 'и')
+        .replace(/[ⅱⅡ]/g, 'и')
+        .replace(/[ⅲⅢ]/g, 'и')
+        .replace(/[ⅵⅥ]/g, 'в')
+        .replace(/[ⅶⅦ]/g, 'в')
+        .replace(/[ⅷⅧ]/g, 'в')
+        // Африканские цифры → латинские → русские
         .replace(/[߀]/g, '0')
         .replace(/[߁]/g, '1')
         .replace(/[߂]/g, '2')
@@ -165,43 +240,6 @@ bot.on('message', (msg) => {
         .replace(/[߇]/g, '7')
         .replace(/[߈]/g, '8')
         .replace(/[߉]/g, '9')
-        // Римские цифры и похожие символы
-        .replace(/[ⅽⅭᴄ]/g, 'c')
-        .replace(/[ⅿⅯᴍ]/g, 'm')
-        .replace(/[ⅾⅮᴅ]/g, 'd')
-        .replace(/[ⅼⅬʟ]/g, 'l')
-        .replace(/[ⅹⅩxх]/g, 'x')
-        .replace(/[ⅳⅣᴠ]/g, 'v')
-        .replace(/[ⅰⅠɪ]/g, 'i')
-        .replace(/[ⅱⅡ]/g, 'ii')
-        .replace(/[ⅲⅢ]/g, 'iii')
-        .replace(/[ⅵⅥ]/g, 'vi')
-        .replace(/[ⅶⅦ]/g, 'vii')
-        .replace(/[ⅷⅧ]/g, 'viii')
-        // Замена латинских букв на русские (для унификации)
-        .replace(/[p]/g, 'р')
-        .replace(/[c]/g, 'с')
-        .replace(/[k]/g, 'к')
-        .replace(/[o]/g, 'о')
-        .replace(/[y]/g, 'у')
-        .replace(/[s]/g, 'с')
-        .replace(/[u]/g, 'у')
-        .replace(/[a]/g, 'а')
-        .replace(/[b]/g, 'б')
-        .replace(/[e]/g, 'е')
-        .replace(/[h]/g, 'н')
-        .replace(/[x]/g, 'х')
-        // Замена греческих букв на русские
-        .replace(/[κ]/g, 'к')
-        .replace(/[ρ]/g, 'р')
-        .replace(/[ο]/g, 'о')
-        .replace(/[υ]/g, 'у')
-        .replace(/[ς]/g, 'с')
-        .replace(/[σ]/g, 'с')
-        .replace(/[τ]/g, 'т')
-        .replace(/[ν]/g, 'н')
-        .replace(/[μ]/g, 'м')
-        .replace(/[λ]/g, 'л')
         // Другие похожие символы
         .replace(/[ʀᴙ]/g, 'р')
         .replace(/[ᴏᴼ]/g, 'о')
@@ -210,24 +248,50 @@ bot.on('message', (msg) => {
         .replace(/[ꜱ]/g, 'с')
         .replace(/[ᵤ]/g, 'у')
         .replace(/[ø]/g, 'о')
-        .replace(/[œ]/g, 'ое')
+        .replace(/[œ]/g, 'о')
         .replace(/[ɵ]/g, 'о')
         .replace(/[ө]/g, 'о')
         .replace(/[φ]/g, 'ф')
         .replace(/[θ]/g, 'т')
         .replace(/[ω]/g, 'о')
-        .replace(/[α]/g, 'а')
-        .replace(/[β]/g, 'б')
-        .replace(/[γ]/g, 'г')
-        .replace(/[δ]/g, 'д')
-        .replace(/[ε]/g, 'е')
-        .replace(/[ζ]/g, 'з')
-        .replace(/[η]/g, 'н')
-        .replace(/[ι]/g, 'и')
-        .replace(/[ξ]/g, 'х')
-        .replace(/[π]/g, 'п')
-        .replace(/[χ]/g, 'х')
-        .replace(/[ψ]/g, 'пс');
+        // Армянские → русские
+        .replace(/[ա]/g, 'а')
+        .replace(/[բ]/g, 'б')
+        .replace(/[գ]/g, 'г')
+        .replace(/[դ]/g, 'д')
+        .replace(/[ե]/g, 'е')
+        .replace(/[զ]/g, 'з')
+        .replace(/[է]/g, 'е')
+        .replace(/[ը]/g, 'ы')
+        .replace(/[թ]/g, 'т')
+        .replace(/[ժ]/g, 'ж')
+        .replace(/[ի]/g, 'и')
+        .replace(/[լ]/g, 'л')
+        .replace(/[խ]/g, 'х')
+        .replace(/[ծ]/g, 'ц')
+        .replace(/[կ]/g, 'к')
+        .replace(/[հ]/g, 'н')
+        .replace(/[ձ]/g, 'дз')
+        .replace(/[ղ]/g, 'г')
+        .replace(/[ճ]/g, 'ч')
+        .replace(/[մ]/g, 'м')
+        .replace(/[յ]/g, 'й')
+        .replace(/[ն]/g, 'н')
+        .replace(/[շ]/g, 'ш')
+        .replace(/[ո]/g, 'о')
+        .replace(/[չ]/g, 'ч')
+        .replace(/[պ]/g, 'п')
+        .replace(/[ջ]/g, 'дж')
+        .replace(/[ռ]/g, 'р')
+        .replace(/[ս]/g, 'с')
+        .replace(/[վ]/g, 'в')
+        .replace(/[տ]/g, 'т')
+        .replace(/[ր]/g, 'р')
+        .replace(/[ց]/g, 'ц')
+        .replace(/[փ]/g, 'п')
+        .replace(/[ք]/g, 'к')
+        .replace(/[օ]/g, 'о')
+        .replace(/[ֆ]/g, 'ф');
 
     // Удаляем все знаки препинания, пробелы и спецсимволы
     const cleanText = normalizedText
@@ -240,95 +304,28 @@ bot.on('message', (msg) => {
     // ПОИСК "КРОКУС" (ВСЕ ВОЗМОЖНЫЕ ВАРИАНТЫ)
     // ============================================================
 
-    // 1. Точное совпадение (все языки)
-    const exactKrokusRegex = new RegExp(
-        '(?:' +
-        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[уyуυ]{1}[сcсς]{1}' +
-        '|' +
-        '[cсcς]{1}[рpрρ]{1}[оo0оο]{1}[cсcς]{1}[уyуυ]{1}[sсς]{1}' +
-        '|' +
-        '[kкkκ]{1}[рpрρ]{1}[оo0оο]{1}[kкkκ]{1}[уyуυ]{1}[sсς]{1}' +
-        '|' +
-        '[κkк]{1}[ρpр]{1}[οo0о]{1}[κkк]{1}[οo0о]{1}[ςсc]{1}' +
-        '|' +
-        '[cсckкkκ]{1}[рpрρ]{1}[оo0оο]{1}[cсckкkκ]{1}[уyуυ]{1}[sсcς]{1}' +
-        ')',
-        'i'
-    );
+    // 1. Точное совпадение
+    const exactKrokusRegex = /крокус|crocus|krokus|κρόκος|кросук|корукс|курсок|сукрок|укрокс|рокуск|крок|кроку|крокс|крокусы|крокусов/i;
 
-    // 2. Перестановки букв
-    const permutationsRegex = new RegExp(
-        '(?:' +
-        '[кkкκ]{1}[рpрρ]{1}[оo0оο]{1}[сcсς]{1}[уyуυ]{1}[кkкκ]{1}' +
-        '|' +
-        '[кkкκ]{1}[оo0оο]{1}[рpрρ]{1}[уyуυ]{1}[кkкκ]{1}[сcсς]{1}' +
-        '|' +
-        '[кkкκ]{1}[уyуυ]{1}[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}[сcсς]{1}' +
-        '|' +
-        '[сcсς]{1}[уyуυ]{1}[кkкκ]{1}[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}' +
-        '|' +
-        '[уyуυ]{1}[кkкκ]{1}[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}[сcсς]{1}' +
-        '|' +
-        '[рpрρ]{1}[оo0оο]{1}[кkкκ]{1}[уyуυ]{1}[сcсς]{1}[кkкκ]{1}' +
-        '|' +
-        '[кkкκ]{1}[уyуυ]{1}[рpрρ]{1}[оo0оο]{1}[сcсς]{1}' +
-        '|' +
-        '[сcсς]{1}[оo0оο]{1}[рpрρ]{1}[уyуυ]{1}[кkкκ]{1}' +
-        '|' +
-        '[рpрρ]{1}[уyуυ]{1}[кkкκ]{1}[оo0оο]{1}[сcсς]{1}' +
-        ')',
-        'i'
-    );
+    // 2. Перестановки и обрывки
+    const permutationsRegex = /кр[оа]с[уы]к|к[оа]р[уы]кс|к[уы]р[оа]кс|с[уы]кр[оа]к|[уы]кр[оа]кс|р[оа]к[уы]ск|к[уы]р[оа]с|с[оа]р[уы]к|р[уы]к[оа]с/i;
 
-    // 3. Обрывки
-    const fragmentsRegex = new RegExp(
-        '(?:' +
-        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}' +
-        '|' +
-        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[уyуυ]{1}' +
-        '|' +
-        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[сcсς]{1}' +
-        '|' +
-        '[кkкκcс]{1}[рpрρ]{1}[оo0оο]{1}[кkкκcс]{1}[уyуυ]{1}[сcсς]{1}' +
-        '|' +
-        '[cсcς]{1}[рpрρ]{1}[оo0оο]{1}[cсcς]{1}[уyуυ]{1}[sсς]{1}' +
-        '|' +
-        '[kкkκ]{1}[рpрρ]{1}[оo0оο]{1}[kкkκ]{1}[уyуυ]{1}[sсς]{1}' +
-        ')',
-        'i'
-    );
+    // 3. Азиатские и африканские языки
+    const asianRegex = /番红花|番紅花|クロッカス|くろっかす|크로커스|क्रोकस|ক্রোকাস|โครคัส|קרוקוס|کروکوس|كروكوس|ክሮከስ/i;
 
-    // 4. Азиатские языки
-    const asianRegex = new RegExp(
-        '(?:' +
-        '番红花|番紅花|クロッカス|くろっかす|크로커스|क्रोकस|ক্রোকাস|โครคัส|קרוקוס|کروکوس' +
-        ')',
-        'i'
-    );
-
-    // 5. Африканские языки
-    const africanRegex = new RegExp(
-        '(?:' +
-        'كروكوس|ክሮከስ' +
-        ')',
-        'i'
-    );
-
-    // 6. Проверка "перед классными"
+    // 4. Проверка "перед классными"
     const beforeClassRegex = /крокус\s*классн[ыо]й?|крокус\s*классн[ыо]е|крокус\s*классн[ыо]|crocus\s*class|κρόκος\s*class|krokus\s*class|crocus\s*classic|krokus\s*klassisch|krokus\s*klasse|krokus\s*klass/i;
 
-    // Проверяем, есть ли совпадение
     const found = 
         exactKrokusRegex.test(cleanText) ||
         permutationsRegex.test(cleanText) ||
-        fragmentsRegex.test(cleanText) ||
-        asianRegex.test(text) ||
-        africanRegex.test(text) ||
+        asianRegex.test(cleanText) ||
         beforeClassRegex.test(cleanText) ||
         // Проверка на "крокус" с любыми символами между буквами
-        /[кkкκcс]\W*[рpрρ]\W*[оo0оο]\W*[кkкκcс]\W*[уyуυ]\W*[сcсς]/i.test(cleanText) ||
-        /[cсcς]\W*[рpрρ]\W*[оo0оο]\W*[cсcς]\W*[уyуυ]\W*[sсς]/i.test(cleanText) ||
-        /[κkк]\W*[ρpр]\W*[οo0о]\W*[κkк]\W*[οo0о]\W*[ςсc]/i.test(cleanText);
+        /к\W*р\W*о\W*к\W*у\W*с/i.test(cleanText) ||
+        /c\W*р\W*о\W*c\W*у\W*s/i.test(cleanText) ||
+        /k\W*р\W*о\W*k\W*у\W*s/i.test(cleanText) ||
+        /κ\W*ρ\W*ο\W*κ\W*ο\W*ς/i.test(cleanText);
 
     if (found) {
         const currentRep = getRep(chatId, userId);
@@ -372,7 +369,6 @@ bot.onText(/^Граце кто (.+)$/i, async (msg, match) => {
 // 7. КОМАНДЫ ТОЛЬКО ДЛЯ РАЗРЕШЁННОГО
 // ============================================================
 
-// ---------- /унизить (по ответу) ----------
 bot.onText(/\/унизить$/, (msg) => {
     const chatId = msg.chat.id;
     const from = msg.from;
@@ -395,7 +391,6 @@ bot.onText(/\/унизить$/, (msg) => {
     bot.sendMessage(chatId, `💀 ${targetMention} унижен! -100 репы. Теперь: ${newVal}`);
 });
 
-// ---------- /осеменение (по ответу) ----------
 bot.onText(/\/осеменение$/, (msg) => {
     const chatId = msg.chat.id;
     const from = msg.from;
@@ -418,7 +413,6 @@ bot.onText(/\/осеменение$/, (msg) => {
     bot.sendMessage(chatId, `🌱 ${targetMention} осеменён! +100 репы. Теперь: ${newVal}`);
 });
 
-// ---------- /larpmoment (по ответу) ----------
 bot.onText(/\/larpmoment$/, (msg) => {
     const chatId = msg.chat.id;
     const from = msg.from;
@@ -441,231 +435,10 @@ bot.onText(/\/larpmoment$/, (msg) => {
     bot.sendMessage(chatId, `🎭 ${targetMention} получил larp-момент! +1. Теперь: ${newVal}`);
 });
 
-// ---------- /мут (по ответу ИЛИ по username) ----------
-bot.onText(/\/мут(?:\s+@(\w+))?\s+(\d+)([мчс])?$/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const from = msg.from;
-
-    if (!isAllowed(from)) {
-        return bot.sendMessage(chatId, '⛔ Нет прав.');
-    }
-
-    let targetUser = null;
-
-    const targetUsername = match[1];
-    if (targetUsername) {
-        try {
-            const admins = await bot.getChatAdministrators(chatId);
-            for (const admin of admins) {
-                if (admin.user.username && admin.user.username.toLowerCase() === targetUsername.toLowerCase()) {
-                    targetUser = admin.user;
-                    break;
-                }
-            }
-            if (!targetUser) {
-                return bot.sendMessage(chatId, '❌ Пользователь с таким username не найден.');
-            }
-        } catch (e) {
-            return bot.sendMessage(chatId, '❌ Ошибка поиска пользователя.');
-        }
-    }
-
-    if (!targetUser && msg.reply_to_message) {
-        targetUser = msg.reply_to_message.from;
-    }
-
-    if (!targetUser) {
-        return bot.sendMessage(
-            chatId,
-            '❌ Укажи пользователя:\n' +
-            '• Ответь на его сообщение командой `/мут 10м`\n' +
-            '• Или напиши `/мут @username 10м`',
-            { parse_mode: 'Markdown' }
-        );
-    }
-
-    if (targetUser.id === from.id) {
-        return bot.sendMessage(chatId, '❌ Нельзя замутить себя.');
-    }
-    if (targetUser.is_bot) {
-        return bot.sendMessage(chatId, '❌ Нельзя замутить бота.');
-    }
-
-    const duration = parseInt(match[2]);
-    const unit = match[3] || 'м';
-
-    if (!duration || isNaN(duration) || duration <= 0) {
-        return bot.sendMessage(chatId, '❌ Укажи время: `/мут 10м` (м — минуты, ч — часы, с — секунды)', { parse_mode: 'Markdown' });
-    }
-
-    try {
-        const member = await bot.getChatMember(chatId, targetUser.id);
-        if (member.status === 'creator' || member.status === 'administrator') {
-            return bot.sendMessage(chatId, '❌ Нельзя замутить админа или создателя.');
-        }
-    } catch (e) {}
-
-    let durationMs;
-    switch (unit) {
-        case 'с': durationMs = duration * 1000; break;
-        case 'ч': durationMs = duration * 60 * 60 * 1000; break;
-        default: durationMs = duration * 60 * 1000;
-    }
-    if (durationMs > 24 * 60 * 60 * 1000) {
-        return bot.sendMessage(chatId, '❌ Максимум — 24 часа.');
-    }
-
-    setMute(chatId, targetUser.id, durationMs);
-
-    try {
-        await bot.restrictChatMember(chatId, targetUser.id, {
-            can_send_messages: false,
-            can_send_media_messages: false,
-            can_send_other_messages: false,
-            can_add_web_page_previews: false,
-        });
-    } catch (e) {}
-
-    const targetMention = getUserMention(targetUser);
-    bot.sendMessage(chatId, `🔇 ${targetMention} замучен на ${duration}${unit}.`);
-});
-
-// ---------- /размут (по ответу ИЛИ по username) ----------
-bot.onText(/\/размут(?:\s+@(\w+))?$/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const from = msg.from;
-
-    if (!isAllowed(from)) {
-        return bot.sendMessage(chatId, '⛔ Нет прав.');
-    }
-
-    let targetUser = null;
-
-    const targetUsername = match[1];
-    if (targetUsername) {
-        try {
-            const admins = await bot.getChatAdministrators(chatId);
-            for (const admin of admins) {
-                if (admin.user.username && admin.user.username.toLowerCase() === targetUsername.toLowerCase()) {
-                    targetUser = admin.user;
-                    break;
-                }
-            }
-            if (!targetUser) {
-                return bot.sendMessage(chatId, '❌ Пользователь с таким username не найден.');
-            }
-        } catch (e) {
-            return bot.sendMessage(chatId, '❌ Ошибка поиска пользователя.');
-        }
-    }
-
-    if (!targetUser && msg.reply_to_message) {
-        targetUser = msg.reply_to_message.from;
-    }
-
-    if (!targetUser) {
-        return bot.sendMessage(
-            chatId,
-            '❌ Укажи пользователя:\n' +
-            '• Ответь на его сообщение командой `/размут`\n' +
-            '• Или напиши `/размут @username`',
-            { parse_mode: 'Markdown' }
-        );
-    }
-
-    if (targetUser.id === from.id) {
-        return bot.sendMessage(chatId, '❌ Нельзя размутить себя.');
-    }
-    if (targetUser.is_bot) {
-        return bot.sendMessage(chatId, '❌ Боты не мучаются.');
-    }
-
-    removeMute(chatId, targetUser.id);
-
-    try {
-        await bot.restrictChatMember(chatId, targetUser.id, {
-            can_send_messages: true,
-            can_send_media_messages: true,
-            can_send_other_messages: true,
-            can_add_web_page_previews: true,
-        });
-    } catch (e) {}
-
-    const targetMention = getUserMention(targetUser);
-    bot.sendMessage(chatId, `✅ ${targetMention} размучен.`);
-});
-
-// ---------- /бан (по ответу ИЛИ по username) ----------
-bot.onText(/\/бан(?:\s+@(\w+))?$/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const from = msg.from;
-
-    if (!isAllowed(from)) {
-        return bot.sendMessage(chatId, '⛔ Нет прав.');
-    }
-
-    let targetUser = null;
-
-    const targetUsername = match[1];
-    if (targetUsername) {
-        try {
-            const admins = await bot.getChatAdministrators(chatId);
-            for (const admin of admins) {
-                if (admin.user.username && admin.user.username.toLowerCase() === targetUsername.toLowerCase()) {
-                    targetUser = admin.user;
-                    break;
-                }
-            }
-            if (!targetUser) {
-                return bot.sendMessage(chatId, '❌ Пользователь с таким username не найден.');
-            }
-        } catch (e) {
-            return bot.sendMessage(chatId, '❌ Ошибка поиска пользователя.');
-        }
-    }
-
-    if (!targetUser && msg.reply_to_message) {
-        targetUser = msg.reply_to_message.from;
-    }
-
-    if (!targetUser) {
-        return bot.sendMessage(
-            chatId,
-            '❌ Укажи пользователя:\n' +
-            '• Ответь на его сообщение командой `/бан`\n' +
-            '• Или напиши `/бан @username`',
-            { parse_mode: 'Markdown' }
-        );
-    }
-
-    if (targetUser.id === from.id) {
-        return bot.sendMessage(chatId, '❌ Нельзя забанить себя.');
-    }
-    if (targetUser.is_bot) {
-        return bot.sendMessage(chatId, '❌ Нельзя забанить бота.');
-    }
-
-    try {
-        const member = await bot.getChatMember(chatId, targetUser.id);
-        if (member.status === 'creator' || member.status === 'administrator') {
-            return bot.sendMessage(chatId, '❌ Нельзя забанить админа или создателя.');
-        }
-    } catch (e) {}
-
-    try {
-        await bot.banChatMember(chatId, targetUser.id);
-        const targetMention = getUserMention(targetUser);
-        bot.sendMessage(chatId, `🔨 ${targetMention} забанен.`);
-    } catch (e) {
-        bot.sendMessage(chatId, '❌ Не удалось забанить. У бота должны быть права администратора.');
-    }
-});
-
 // ============================================================
 // 8. КОМАНДЫ ДЛЯ ВСЕХ (ПРОСМОТР)
 // ============================================================
 
-// ---------- /репа (универсальная: своя ИЛИ по ответу) ----------
 bot.onText(/\/репа$/, (msg) => {
     const chatId = msg.chat.id;
     let userId = msg.from.id;
@@ -686,7 +459,6 @@ bot.onText(/\/репа$/, (msg) => {
     }
 });
 
-// ---------- /репа_пользователя (только по ответу) ----------
 bot.onText(/\/репа_пользователя$/, (msg) => {
     const chatId = msg.chat.id;
     if (!msg.reply_to_message) {
@@ -699,5 +471,103 @@ bot.onText(/\/репа_пользователя$/, (msg) => {
     bot.sendMessage(chatId, `📊 Репа ${mention}: ${rep} | 🎭 Larp-моменты: ${larp}`);
 });
 
-// ---------- /топ ----------
-bot.onText(/\/топ$
+bot.onText(/\/топ$/, (msg) => {
+    const chatId = msg.chat.id;
+    const data = loadJSON(REP_FILE);
+    const users = [];
+    for (const key in data) {
+        if (key.startsWith(`${chatId}_`)) {
+            const userId = key.split('_')[1];
+            users.push({ id: userId, rep: data[key] });
+        }
+    }
+    users.sort((a, b) => b.rep - a.rep);
+    const top = users.slice(0, 10);
+    if (!top.length) return bot.sendMessage(chatId, '📭 Нет данных.');
+    let message = '🏆 ТОП-10 репы:\n\n';
+    top.forEach((u, i) => { message += `${i+1}. ID: ${u.id} — ${u.rep} реп\n`; });
+    bot.sendMessage(chatId, message);
+});
+
+bot.onText(/\/larp$/, (msg) => {
+    const chatId = msg.chat.id;
+    let userId = msg.from.id;
+
+    if (msg.reply_to_message) {
+        const target = msg.reply_to_message.from;
+        userId = target.id;
+    }
+
+    const larp = getLarp(chatId, userId);
+    
+    if (msg.reply_to_message) {
+        const mention = getUserMention(msg.reply_to_message.from);
+        bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
+    } else {
+        bot.sendMessage(chatId, `🎭 Твои larp-моменты: ${larp}`);
+    }
+});
+
+bot.onText(/\/larp_пользователя$/, (msg) => {
+    const chatId = msg.chat.id;
+    if (!msg.reply_to_message) {
+        return bot.sendMessage(chatId, '❌ Ответь на сообщение пользователя.');
+    }
+    const target = msg.reply_to_message.from;
+    const larp = getLarp(chatId, target.id);
+    const mention = getUserMention(target);
+    bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
+});
+
+bot.onText(/\/топ_larp$/, (msg) => {
+    const chatId = msg.chat.id;
+    const data = loadJSON(LARP_FILE);
+    const users = [];
+    for (const key in data) {
+        if (key.startsWith(`${chatId}_`)) {
+            const userId = key.split('_')[1];
+            users.push({ id: userId, larp: data[key] });
+        }
+    }
+    users.sort((a, b) => b.larp - a.larp);
+    const top = users.slice(0, 10);
+    if (!top.length) return bot.sendMessage(chatId, '📭 Нет данных.');
+    let message = '🎭 ТОП-10 larp-моментов:\n\n';
+    top.forEach((u, i) => { message += `${i+1}. ID: ${u.id} — ${u.larp} larp\n`; });
+    bot.sendMessage(chatId, message);
+});
+
+// ============================================================
+// 9. ПРИВЕТСТВИЕ
+// ============================================================
+
+bot.on('new_chat_members', (msg) => {
+    const chatId = msg.chat.id;
+    const newMember = msg.new_chat_members[0];
+
+    if (newMember.id === bot.me.id) {
+        return bot.sendMessage(chatId,
+            `👋 Бот для репы, ларпов, мутов и банов.\n\n` +
+            `🔹 Для всех:\n` +
+            `/репа — без ответа: своя репа + larp; с ответом: репа + larp того, кому ответил\n` +
+            `/репа_пользователя — репа другого + larp (только по ответу)\n` +
+            `/топ — топ репы\n` +
+            `/larp — без ответа: свои larp; с ответом: larp того, кому ответил\n` +
+            `/larp_пользователя — larp другого (только по ответу)\n` +
+            `/топ_larp — топ larp\n\n` +
+            `🔸 Только для @${ALLOWED_USERNAME}:\n` +
+            `/унизить — -100 репы (по ответу)\n` +
+            `/осеменение — +100 репы (по ответу)\n` +
+            `/larpmoment — +1 larp (по ответу)\n` +
+            `/мут 10м — мут (по ответу ИЛИ @username)\n` +
+            `/размут — снять мут (по ответу ИЛИ @username)\n` +
+            `/бан — бан (по ответу ИЛИ @username)`
+        );
+    }
+
+    bot.sendMessage(chatId, `🏴‍☠️ ${getUserMention(newMember)} Вступил в отряд ларперов ANARCHY STUDIO 🏴‍☠️`);
+});
+
+console.log('✅ Бот запущен!');
+console.log(`🔑 Разрешённый: @${ALLOWED_USERNAME}`);
+console.log(`📁 Данные хранятся в: ${DATA_DIR}`);
