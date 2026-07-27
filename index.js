@@ -135,7 +135,7 @@ bot.on('message', (msg) => {
 });
 
 // ============================================================
-// 5. АВТОШТРАФ ЗА "КРОКУС" (ВСЕ ЯЗЫКИ + ДИАКРИТИКА + СПЕЦСИМВОЛЫ)
+// 5. АВТОШТРАФ ЗА "КРОКУС" (ВСЕ ЯЗЫКИ + ДИАКРИТИКА + РИМСКИЕ ЦИФРЫ)
 // ============================================================
 
 bot.on('message', (msg) => {
@@ -150,37 +150,60 @@ bot.on('message', (msg) => {
     // Приводим к нижнему регистру для упрощения
     let text = msg.text.toLowerCase();
 
-    // Нормализуем диакритические знаки (ø -> o, ö -> o, и т.д.)
+    // ============================================================
+    // НОРМАЛИЗАЦИЯ ТЕКСТА (удаляем диакритику, римские цифры, спецсимволы)
+    // ============================================================
+
     const normalizedText = text
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .replace(/ø/g, 'o')
-        .replace(/œ/g, 'oe')
-        .replace(/ɵ/g, 'o')
-        .replace(/ө/g, 'o')
-        .replace(/φ/g, 'f')
-        .replace(/θ/g, 'th')
-        .replace(/ω/g, 'o')
-        .replace(/α/g, 'a')
-        .replace(/β/g, 'b')
-        .replace(/γ/g, 'g')
-        .replace(/δ/g, 'd')
-        .replace(/ε/g, 'e')
-        .replace(/ζ/g, 'z')
-        .replace(/η/g, 'h')
-        .replace(/ι/g, 'i')
-        .replace(/λ/g, 'l')
-        .replace(/μ/g, 'm')
-        .replace(/ν/g, 'n')
-        .replace(/ξ/g, 'x')
-        .replace(/π/g, 'p')
-        .replace(/ρ/g, 'r')
-        .replace(/σ/g, 's')
-        .replace(/τ/g, 't')
-        .replace(/υ/g, 'y')
-        .replace(/χ/g, 'ch')
-        .replace(/ψ/g, 'ps')
-        .replace(/ω/g, 'o');
+        // Римские цифры и похожие символы
+        .replace(/[ⅽⅭ]/g, 'c')
+        .replace(/[ⅿⅯ]/g, 'm')
+        .replace(/[ⅾⅮ]/g, 'd')
+        .replace(/[ⅼⅬ]/g, 'l')
+        .replace(/[ⅹⅩ]/g, 'x')
+        .replace(/[ⅳⅣ]/g, 'v')
+        .replace(/[ⅰⅠ]/g, 'i')
+        .replace(/[ⅱⅡ]/g, 'ii')
+        .replace(/[ⅲⅢ]/g, 'iii')
+        .replace(/[ⅵⅥ]/g, 'vi')
+        .replace(/[ⅶⅦ]/g, 'vii')
+        .replace(/[ⅷⅧ]/g, 'viii')
+        // Другие похожие символы
+        .replace(/[ᴄ]/g, 'c')
+        .replace(/[ʀ]/g, 'r')
+        .replace(/[ᴏ]/g, 'o')
+        .replace(/[ᴋ]/g, 'k')
+        .replace(/[ʏ]/g, 'y')
+        .replace(/[ꜱ]/g, 's')
+        .replace(/[ᵤ]/g, 'u')
+        .replace(/[ø]/g, 'o')
+        .replace(/[œ]/g, 'oe')
+        .replace(/[ɵ]/g, 'o')
+        .replace(/[ө]/g, 'o')
+        .replace(/[φ]/g, 'f')
+        .replace(/[θ]/g, 'th')
+        .replace(/[ω]/g, 'o')
+        .replace(/[α]/g, 'a')
+        .replace(/[β]/g, 'b')
+        .replace(/[γ]/g, 'g')
+        .replace(/[δ]/g, 'd')
+        .replace(/[ε]/g, 'e')
+        .replace(/[ζ]/g, 'z')
+        .replace(/[η]/g, 'h')
+        .replace(/[ι]/g, 'i')
+        .replace(/[λ]/g, 'l')
+        .replace(/[μ]/g, 'm')
+        .replace(/[ν]/g, 'n')
+        .replace(/[ξ]/g, 'x')
+        .replace(/[π]/g, 'p')
+        .replace(/[ρ]/g, 'r')
+        .replace(/[σ]/g, 's')
+        .replace(/[τ]/g, 't')
+        .replace(/[υ]/g, 'y')
+        .replace(/[χ]/g, 'ch')
+        .replace(/[ψ]/g, 'ps');
 
     // Удаляем все знаки препинания, пробелы и спецсимволы для проверки
     const cleanText = normalizedText
@@ -716,36 +739,4 @@ bot.onText(/\/larp_пользователя$/, (msg) => {
     bot.sendMessage(chatId, `🎭 Larp-моменты ${mention}: ${larp}`);
 });
 
-// ---------- /топ_larp ----------
-bot.onText(/\/топ_larp$/, (msg) => {
-    const chatId = msg.chat.id;
-    const data = loadJSON(LARP_FILE);
-    const users = [];
-    for (const key in data) {
-        if (key.startsWith(`${chatId}_`)) {
-            const userId = key.split('_')[1];
-            users.push({ id: userId, larp: data[key] });
-        }
-    }
-    users.sort((a, b) => b.larp - a.larp);
-    const top = users.slice(0, 10);
-    if (!top.length) return bot.sendMessage(chatId, '📭 Нет данных.');
-    let message = '🎭 ТОП-10 larp-моментов:\n\n';
-    top.forEach((u, i) => { message += `${i+1}. ID: ${u.id} — ${u.larp} larp\n`; });
-    bot.sendMessage(chatId, message);
-});
-
-// ============================================================
-// 9. ПРИВЕТСТВИЕ НОВЫХ УЧАСТНИКОВ
-// ============================================================
-
-bot.on('new_chat_members', (msg) => {
-    const chatId = msg.chat.id;
-    const newMember = msg.new_chat_members[0];
-
-    // Если бот сам добавлен — показываем справку
-    if (newMember.id === bot.me.id) {
-        return bot.sendMessage(chatId,
-            `👋 Бот для репы, ларпов, мутов и банов.\n\n` +
-            `🔹 Для всех:\n` +
-            `/репа — без ответ
+// ---------
